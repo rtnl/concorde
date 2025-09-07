@@ -2,6 +2,7 @@ mod axis;
 mod box2;
 pub mod vec2;
 
+use std::ops::Sub;
 use std::process::exit;
 
 use crate::axis::Axis;
@@ -35,49 +36,60 @@ impl<'a, C: Connection> Concorde<'a, C> {
             ),
         }
     }
-}
 
-fn manage_windows<C>(connection: &C, screen: &Screen) -> Result<(), ReplyError>
-where
-    C: Connection + ConnectionExt + Send + Sync,
-{
-    let change = ChangeWindowAttributesAux::default()
-        .event_mask(EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY);
+    fn manage_windows(&self) -> Result<(), ReplyError> {
+        let change = ChangeWindowAttributesAux::default()
+            .event_mask(EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY);
 
-    let result = connection
-        .change_window_attributes(screen.root, &change)?
-        .check();
+        let result = self
+            .connection
+            .change_window_attributes(self.screen.root, &change)?
+            .check();
 
-    if let Err(ReplyError::X11Error(ref error)) = result {
-        if error.error_kind == ErrorKind::Access {
-            eprintln!("Another window manager is running.");
-            exit(1);
+        if let Err(ReplyError::X11Error(ref error)) = result {
+            if error.error_kind == ErrorKind::Access {
+                eprintln!("Another window manager is running.");
+                exit(1);
+            }
         }
+
+        result
     }
 
-    result
+    fn setup(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // TODO: more atoms
+        let wm_protocols = self.connection.intern_atom(false, b"WM_PROTOCOLS")?;
+        println!("{:?}", wm_protocols.raw_reply());
+
+        Ok(())
+    }
+
+    fn run(self) -> Result<(), Box<dyn std::error::Error>> {
+        loop {
+            self.connection.flush()?;
+
+            let event = self.connection.wait_for_event()?;
+            let mut event_option = Some(event);
+
+            while let Some(ref event) = event_option {
+                println!("{:?}\n", event);
+
+                self.connection.poll_for_event()?;
+                event_option = self.connection.poll_for_event()?;
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Ok((connection, screen_number)) = x11rb::connect(None) else {
-        eprintln!("Failed to connect to X server.");
+        eprintln!("Failed to connect to X server. (is it running?)");
         exit(1);
     };
 
     let concorde = Concorde::new(&connection, &connection.setup().roots[screen_number]);
-    manage_windows(&connection, concorde.screen)?;
 
-    loop {
-        connection.flush()?;
-
-        let event = connection.wait_for_event()?;
-        let mut event_option = Some(event);
-
-        while let Some(ref _event) = event_option {
-            // TODO: handle events
-
-            connection.poll_for_event()?;
-            event_option = connection.poll_for_event()?;
-        }
-    }
+    concorde.manage_windows()?;
+    concorde.setup()?;
+    concorde.run()
 }
