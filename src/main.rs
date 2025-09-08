@@ -12,8 +12,8 @@ use crate::vec2::Vec2f;
 use x11rb::errors::ReplyError;
 use x11rb::{
     connection::Connection,
-    protocol::ErrorKind,
     protocol::xproto::{ChangeWindowAttributesAux, ConnectionExt, EventMask, Screen},
+    protocol::{ErrorKind, Event},
 };
 
 struct Concorde<'a, C: Connection> {
@@ -38,8 +38,11 @@ impl<'a, C: Connection> Concorde<'a, C> {
     }
 
     fn manage_windows(&self) -> Result<(), ReplyError> {
-        let change = ChangeWindowAttributesAux::default()
-            .event_mask(EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY);
+        let change = ChangeWindowAttributesAux::default().event_mask(
+            EventMask::SUBSTRUCTURE_REDIRECT
+                | EventMask::SUBSTRUCTURE_NOTIFY
+                | EventMask::KEY_PRESS,
+        );
 
         let result = self
             .connection
@@ -72,7 +75,13 @@ impl<'a, C: Connection> Concorde<'a, C> {
             let mut event_option = Some(event);
 
             while let Some(ref event) = event_option {
-                println!("{:?}\n", event);
+                match event {
+                    Event::ButtonPress(event) => {
+                        println!("{:#?}", event.state);
+                        println!("{}", event.detail);
+                    }
+                    _ => {}
+                }
 
                 self.connection.poll_for_event()?;
                 event_option = self.connection.poll_for_event()?;
