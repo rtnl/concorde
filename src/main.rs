@@ -2,7 +2,6 @@ mod axis;
 mod box2;
 pub mod vec2;
 
-use std::ops::Sub;
 use std::process::exit;
 
 use crate::axis::Axis;
@@ -10,6 +9,7 @@ use crate::box2::Box2f;
 use crate::vec2::Vec2f;
 
 use x11rb::errors::ReplyError;
+use x11rb::protocol::xproto::KeyButMask;
 use x11rb::{
     connection::Connection,
     protocol::xproto::{ChangeWindowAttributesAux, ConnectionExt, EventMask, Screen},
@@ -77,8 +77,9 @@ impl<'a, C: Connection> Concorde<'a, C> {
             while let Some(ref event) = event_option {
                 match event {
                     Event::KeyRelease(event) => {
-                        println!("{:?}", event.state);
-                        if event.detail == 9 {
+                        // Q
+                        if event.detail == 24 && event.state == KeyButMask::SHIFT | KeyButMask::MOD4
+                        {
                             return Ok(());
                         }
                     }
