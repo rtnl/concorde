@@ -78,7 +78,7 @@ impl<'a, C: Connection> Concorde<'a, C> {
                 match event {
                     Event::KeyRelease(event) => {
                         println!("{:?}", event.state);
-                        if event.detail == b'Q' {
+                        if event.detail == 9 {
                             return Ok(());
                         }
                     }
