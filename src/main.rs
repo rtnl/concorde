@@ -41,7 +41,7 @@ impl<'a, C: Connection> Concorde<'a, C> {
         let change = ChangeWindowAttributesAux::default().event_mask(
             EventMask::SUBSTRUCTURE_REDIRECT
                 | EventMask::SUBSTRUCTURE_NOTIFY
-                | EventMask::KEY_PRESS,
+                | EventMask::KEY_RELEASE,
         );
 
         let result = self
@@ -76,9 +76,11 @@ impl<'a, C: Connection> Concorde<'a, C> {
 
             while let Some(ref event) = event_option {
                 match event {
-                    Event::ButtonPress(event) => {
-                        println!("{:#?}", event.state);
-                        println!("{}", event.detail);
+                    Event::KeyRelease(event) => {
+                        println!("{:?}", event.state);
+                        if event.detail == b'Q' {
+                            return Ok(());
+                        }
                     }
                     _ => {}
                 }
