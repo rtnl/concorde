@@ -1,11 +1,14 @@
 mod axis;
 mod box2;
+mod keybind;
 pub mod vec2;
 
 use std::process::exit;
 
 use crate::axis::Axis;
 use crate::box2::Box2f;
+use crate::keybind::{Keybind, KeybindAction, Keycode};
+
 use crate::vec2::Vec2f;
 
 use x11rb::errors::ReplyError;
@@ -20,10 +23,11 @@ struct Concorde<'a, C: Connection> {
     connection: &'a C,
     screen: &'a Screen,
     layout: Box2f,
+    keybinds: Vec<Keybind>,
 }
 
 impl<'a, C: Connection> Concorde<'a, C> {
-    fn new(connection: &'a C, screen: &'a Screen) -> Self {
+    fn new(connection: &'a C, screen: &'a Screen, keybinds: Vec<Keybind>) -> Self {
         Self {
             connection: connection,
             screen: screen,
@@ -34,6 +38,7 @@ impl<'a, C: Connection> Concorde<'a, C> {
                     screen.height_in_pixels as f64,
                 ),
             ),
+            keybinds: keybinds,
         }
     }
 
@@ -77,10 +82,14 @@ impl<'a, C: Connection> Concorde<'a, C> {
             while let Some(ref event) = event_option {
                 match event {
                     Event::KeyRelease(event) => {
-                        // Q
-                        if event.detail == 24 && event.state == KeyButMask::SHIFT | KeyButMask::MOD4
-                        {
-                            return Ok(());
+                        // TODO: this doesn't look good, fix.
+                        for keybind in &self.keybinds {
+                            if event.detail == keybind.key && event.state == keybind.mask {
+                                match keybind.command {
+                                    KeybindAction::Quit => return Ok(()),
+                                    _ => {}
+                                }
+                            }
                         }
                     }
                     _ => {}
@@ -99,7 +108,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         exit(1);
     };
 
-    let concorde = Concorde::new(&connection, &connection.setup().roots[screen_number]);
+    let concorde = Concorde::new(
+        &connection,
+        &connection.setup().roots[screen_number],
+        vec![Keybind::new(
+            KeyButMask::MOD4 | KeyButMask::SHIFT,
+            Keycode::Q,
+            KeybindAction::Quit,
+        )],
+    );
 
     concorde.manage_windows()?;
     concorde.setup()?;
