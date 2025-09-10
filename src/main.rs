@@ -101,15 +101,14 @@ impl<'a, C: Connection> Concorde<'a, C> {
                 match event {
                     Event::KeyRelease(event) => {
                         for keybind in &self.keybinds {
-                            if !(event.detail == keybind.key && event.state == keybind.mask) {
-                                break;
-                            }
-                            match &keybind.action {
-                                KeybindAction::Quit => return Ok(()),
-                                KeybindAction::Execute(command) => {
-                                    Command::new("sh").arg(command).spawn()?;
+                            if event.detail == keybind.key && event.state == keybind.mask {
+                                match &keybind.action {
+                                    KeybindAction::Quit => return Ok(()),
+                                    KeybindAction::Execute(command) => {
+                                        Command::new(command).spawn()?;
+                                    }
+                                    _ => {}
                                 }
-                                _ => {}
                             }
                         }
                     }
