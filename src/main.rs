@@ -3,7 +3,7 @@ mod box2;
 mod keybind;
 pub mod vec2;
 
-use std::process::exit;
+use std::process::{Command, exit};
 
 use crate::axis::Axis;
 use crate::box2::Box2f;
@@ -11,6 +11,7 @@ use crate::keybind::{Keybind, KeybindAction, Keycode};
 
 use crate::vec2::Vec2f;
 
+use x11rb::atom_manager;
 use x11rb::errors::ReplyError;
 use x11rb::protocol::xproto::KeyButMask;
 use x11rb::{
@@ -19,11 +20,31 @@ use x11rb::{
     protocol::{ErrorKind, Event},
 };
 
-struct Concorde<'a, C: Connection> {
+struct Concorde<'a, C> {
     connection: &'a C,
     screen: &'a Screen,
     layout: Box2f,
     keybinds: Vec<Keybind>,
+}
+
+atom_manager! {
+    pub AtomCollection:
+
+    AtomCollectionCookie {
+        WM_PROTOCOLS,
+        WM_DELETE_WINDOW,
+        WM_STATE,
+        WM_TAKE_FOCUS,
+        _NET_ACTIVE_WINDOW,
+        _NET_SUPPORTED,
+        _NET_WM_NAME,
+        _NET_WM_STATE,
+        _NET_SUPPORTING_WM_CHECK,
+        _NET_WM_STATE_FULLSCREEN,
+        _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_DIALOG,
+        _NET_CLIENT_LIST,
+    }
 }
 
 impl<'a, C: Connection> Concorde<'a, C> {
@@ -65,10 +86,7 @@ impl<'a, C: Connection> Concorde<'a, C> {
     }
 
     fn setup(&self) -> Result<(), Box<dyn std::error::Error>> {
-        // TODO: more atoms
-        let wm_protocols = self.connection.intern_atom(false, b"WM_PROTOCOLS")?;
-        println!("{:?}", wm_protocols.raw_reply());
-
+        let atoms = AtomCollection::new(self.connection)?;
         Ok(())
     }
 
@@ -82,13 +100,16 @@ impl<'a, C: Connection> Concorde<'a, C> {
             while let Some(ref event) = event_option {
                 match event {
                     Event::KeyRelease(event) => {
-                        // TODO: this doesn't look good, fix.
                         for keybind in &self.keybinds {
-                            if event.detail == keybind.key && event.state == keybind.mask {
-                                match keybind.command {
-                                    KeybindAction::Quit => return Ok(()),
-                                    _ => {}
+                            if !(event.detail == keybind.key && event.state == keybind.mask) {
+                                break;
+                            }
+                            match &keybind.action {
+                                KeybindAction::Quit => return Ok(()),
+                                KeybindAction::Execute(command) => {
+                                    Command::new(command).spawn()?;
                                 }
+                                _ => {}
                             }
                         }
                     }
@@ -108,14 +129,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         exit(1);
     };
 
+    // TODO: parse .toml config
+    let keybinds = vec![
+        Keybind::new(
+            KeyButMask::SHIFT | KeyButMask::MOD4,
+            Keycode::Esc,
+            KeybindAction::Quit,
+        ),
+        Keybind::new(
+            KeyButMask::SHIFT | KeyButMask::MOD4,
+            Keycode::R,
+            KeybindAction::Execute("dmenu".to_string()),
+        ),
+    ];
+
     let concorde = Concorde::new(
         &connection,
         &connection.setup().roots[screen_number],
-        vec![Keybind::new(
-            KeyButMask::MOD4 | KeyButMask::SHIFT,
-            Keycode::Q,
-            KeybindAction::Quit,
-        )],
+        keybinds,
     );
 
     concorde.manage_windows()?;
