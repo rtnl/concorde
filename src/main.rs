@@ -107,7 +107,7 @@ impl<'a, C: Connection> Concorde<'a, C> {
                             match &keybind.action {
                                 KeybindAction::Quit => return Ok(()),
                                 KeybindAction::Execute(command) => {
-                                    Command::new(command).spawn()?;
+                                    Command::new("sh").arg(command).spawn()?;
                                 }
                                 _ => {}
                             }
@@ -139,7 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Keybind::new(
             KeyButMask::SHIFT | KeyButMask::MOD4,
             Keycode::R,
-            KeybindAction::Execute("dmenu".to_string()),
+            KeybindAction::Execute("dmenu_run".to_string()),
         ),
     ];
 
