@@ -19,8 +19,12 @@ impl Vec2f {
         Self { x, y }
     }
 
+    pub fn of(value: f64) -> Self {
+        Self { x: value, y: value }
+    }
+
     pub fn zero() -> Self {
-        Self { x: 0.0, y: 0.0 }
+        Self::of(0.0)
     }
 
     pub fn x(&self) -> f64 {

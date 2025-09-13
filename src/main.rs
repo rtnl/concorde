@@ -3,9 +3,8 @@ mod box2;
 mod keybind;
 pub mod vec2;
 
-use std::process::{Command, exit};
+use std::process::{exit, Command};
 
-use crate::axis::Axis;
 use crate::box2::Box2f;
 use crate::keybind::{Keybind, KeybindAction, Keycode};
 
