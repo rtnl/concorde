@@ -23,3 +23,10 @@ func (b *Box2i) GetPos() Vector2i {
 func (b *Box2i) GetSize() Vector2i {
 	return b.size
 }
+
+func (b *Box2i) Expand(n int32) Box2i {
+	return NewBox2i(
+		b.pos.Add(-n),
+		b.size.Add(n),
+	)
+}

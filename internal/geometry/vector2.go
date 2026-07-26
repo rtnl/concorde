@@ -23,3 +23,7 @@ func (v *Vector2i) GetX() int32 {
 func (v *Vector2i) GetY() int32 {
 	return v.y
 }
+
+func (v *Vector2i) Add(n int32) Vector2i {
+	return NewVector2i(v.x+n, v.y+n)
+}
